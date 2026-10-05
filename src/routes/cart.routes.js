@@ -10,6 +10,7 @@ router
   .route("/")
   .get(cartController.getCart)
   .post(cartController.addToCart)
+  .put(cartController.updateCart)
   .delete(cartController.clearCart);
 router
   .route("/count")

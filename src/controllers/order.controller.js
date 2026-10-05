@@ -45,7 +45,7 @@ exports.captureAndCreateOrder = async (req, res, next) => {
       user: userId,
       items: cart.items.map((item) => ({
         product: item.product._id,
-        productModel: item.productModel,
+        name: item.product.name,
         quantity: item.quantity,
         price: item.product.price, // سعر المنتج عند الشراء
         selectedOptions: item.selectedOptions,

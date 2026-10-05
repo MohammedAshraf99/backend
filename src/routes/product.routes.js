@@ -14,29 +14,28 @@ const path = require("path");
 // });
 
 // const upload = multer({ storage: storage });
-
-router.post(
-  "/upload-image",
-  upload.array("images", 5),
-  productController.uploadImage,
-);
-// المسار: عند إرسال طلب POST، يتم رفع الصورة أولاً باسم 'image' ثم تشغيل دالة الكونترولر
+router.post("/upload-image", upload.array("images", 5), productController.uploadImage);
 router.delete("/delete-image", productController.deleteImage);
-router.route("/all").get(productController.getAllProducts);
-router.route("/deals").get(productController.dealProduct);
-router.route("/sale").get(productController.saleProduct);
+router.get("/count", productController.getCategoriesCount);
+router.route("/deals").get(productController.getDealsProducts);
+router.route("/sale").get(productController.saleProducts);
 
-router.route("/count").get( productController.getProductCount);
-router
-  .route("/:type")
-  .get(productController.getAllProductsByCategory)
+// 2. Base Collection Routes (المسار الرئيسي /)
+router.route("/")
+  .get(productController.getProducts)
   .post(productController.createProduct);
 
-router
-  .route("/:type/:id")
+// 3. Category Dynamic Route (مسار الفئات الديناميكي)
+router.get("/category/:category", productController.getProducts);
+
+// 4. Param Dynamic Route (مسار الـ ID الديناميكي - يجب وضعه في النهاية)
+router.route("/:id")
   .get(productController.getProductById)
   .put(productController.updateProduct)
   .delete(productController.deleteProduct);
+
+
+
 
 
 module.exports = router;

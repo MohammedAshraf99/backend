@@ -1,196 +1,197 @@
-const Balloon = require("../models/balloon.model");
-const Gift = require("../models/gift.model");
-const Perfume = require("../models/perfume.model");
+const Product = require("../models/product.model");
+const Cart = require("../models/cart.model");
 
-// خريطة لتحديد الموديل المناسب بناءً على نوع المنتج في الـ URL
-const getModel = (type) => {
-  switch (type) {
-    case "balloons":
-      return Balloon;
-    case "gifts":
-      return Gift;
-    case "perfumes":
-      return Perfume;
-    default:
-      return null;
-  }
-};
-
-// 1. Create - إضافة منتج جديد
-exports.createProduct = async (req, res, next) => {
+/**
+ * @desc    Get products with filtering, sorting, and pagination
+ * @route   GET /api/products
+ * @access  Public
+ */
+exports.getProducts = async (req, res) => {
   try {
-    const Model = getModel(req.params.type);
-    if (!Model)
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid product type" });
+    const category = req.params.category;
+   let products
+    if (category) {
+      console.log(category);
+       products = await Product.find({ category: category.toLowerCase() });
+    } else {
+       products = await Product.find();
+    }
 
-    const product = await Model.create(req.body);
-    res.status(201).json({ success: true, data: product });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// 2. Read All -  جلب جميع المنتجات لكتاجوري معين
-exports.getAllProductsByCategory = async (req, res, next) => {
-  let products;
-  try {
-    const Model = getModel(req.params.type);
-    if (!Model)
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid product type" });
-
-      if(req.params.type == 'sale'){
-        const [balloons, gifts, perfumes] = await Promise.all([
-      Balloon.find({isSale: true}),
-      Gift.find({isSale: true}),
-      Perfume.find({isSale: true}),
-      ]);
-      products = [...balloons, ...gifts, ...perfumes];
-        }else{
-      products = await Model.find();
-        }
-    res
-      .status(200)
-      .json({ success: true, count: products.length, data: products });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// 3. Read All - جلب جميع المنتجات
-exports.getAllProducts = async (req, res, next) => {
-  try {
-    // 1. تنفيذ الاستعلامات الثلاثة بالتوازي لتوفير الوقت والسرعة
-    const [balloons, gifts, perfumes] = await Promise.all([
-      Balloon.find(),
-      Gift.find(),
-      Perfume.find(),
-    ]);
-    // 2. تجميع كل المنتجات في مصفوفة واحدة
-    const products = [...balloons, ...gifts, ...perfumes];
-
-    // 3. إرجاع الرد للـ Frontend
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
-      count: products.length,
       data: products,
     });
   } catch (error) {
-    // تمرير الخطأ للـ Error Middleware
-    next("error");
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while fetching data",
+      error: error.message,
+    });
   }
 };
 
-// 4. Read Single - جلب منتج واحد بالتفصيل
-exports.getProductById = async (req, res, next) => {
+exports.getDealsProducts = async (req, res) => {
   try {
-    const Model = getModel(req.params.type);
-    if (!Model)
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid product type" });
-
-    const product = await Model.findById(req.params.id);
-    if (!product)
-      return res
-        .status(404)
-        .json({ success: false, message: "Product not found" });
-
-    res.status(200).json({ success: true, data: product });
+       products = await Product.find({deal:true});
+  
+    return res.status(200).json({
+      success: true,
+      data: products,
+    });
   } catch (error) {
-    next(error);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while fetching data",
+      error: error.message,
+    });
   }
 };
 
-// 5. Update - تعديل منتج
-exports.updateProduct = async (req, res, next) => {
+exports.saleProducts = async (req, res) => {
   try {
-    const Model = getModel(req.params.type);
-    if (!Model)
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid product type" });
+       products = await Product.find({isSale:true});
+  
+    return res.status(200).json({
+      success: true,
+      data: products,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while fetching data",
+      error: error.message,
+    });
+  }
+};
 
-    const product = await Model.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true,
+/**
+ * @desc    Get single product details by ID
+ * @route   GET /api/products/:id
+ * @access  Public
+ */
+exports.getProductById = async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id);
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+    return res.status(200).json({
+      success: true,
+      data: product,
+    });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid product ID",
+    });
+  }
+};
+/**
+ * @desc    Create a new product
+ * @route   POST /api/products
+ * @access  Private/Admin
+ */
+exports.createProduct = async (req, res) => {
+  try {
+    console.log(req.body)
+    const product = await Product.create(req.body);
+    return res.status(201).json({
+      success: true,
+      message: "The product was created successfully",
+      data: product,
+    });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+/**
+ * @desc    Update product details
+ * @route   PUT /api/products/:id
+ * @access  Private/Admin
+ */
+exports.updateProduct = async (req, res) => {
+  try {
+
+
+    const { id } = req.params;
+    const { active } = req.body;
+
+    if (active === false) {
+      await Cart.updateMany(
+        { 'items.product': id },
+        { $pull: { items: { product: id } } }
+      );
+    }
+
+    const product = await Product.findByIdAndUpdate(req.params.id, req.body, {
+      new: true, // Returns the document after update
+      runValidators: true, // Applies validation rules during update
     });
 
-    if (!product)
-      return res
-        .status(404)
-        .json({ success: false, message: "Product not found" });
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found to update",
+      });
+    }
 
-    res.status(200).json({ success: true, data: product });
+    return res.status(200).json({
+      success: true,
+      message: "The product was updated successfully",
+      data: product,
+    });
   } catch (error) {
-    next(error);
+    return res.status(400).json({
+      success: false,
+      message: "An error occurred while updating the product",
+      error: error.message,
+    });
   }
 };
 
-// مسار لجلب المنتجات التي عليها عرض فقط
-exports.dealProduct = async (req, res, next) => {
-  try {
-    // جلب المنتجات حيث تكون قيمة deal تساوي true
-    const [balloons, gifts, perfumes] = await Promise.all([
-      Balloon.find({ deal: true }),
-      Gift.find({ deal: true }),
-      Perfume.find({ deal: true }),
-    ]);
-    // 2. تجميع كل المنتجات في مصفوفة واحدة
+/**
+ * @desc    Delete a product
+ * @route   DELETE /api/products/:id
+ * @access  Private/Admin
+ */
+exports.deleteProduct = async (req, res) => {
+ try {
+  const { id } = req.params; // استخراج المتغير بشكل صريح
 
-    const dealProducts = [...balloons, ...gifts, ...perfumes];
-    // إرجاع المنتجات كـ JSON للـ Frontend
-    res.status(200).json({ status: "success", data: dealProducts });
-  } catch (error) {
-    res
-      .status(500)
-      .json({ message: "حدث خطأ أثناء جلب العروض", error: error.message });
+  // 1. حذف المنتج من قاعدة البيانات
+  const product = await Product.findByIdAndDelete(id);
+
+  if (!product) {
+    return res.status(404).json({
+      success: false,
+      message: "Product not found to delete",
+    });
   }
-};
 
-exports.saleProduct = async (req, res, next) => {
-  try {
-    // جلب المنتجات حيث تكون قيمة deal تساوي true
-    const [balloons, gifts, perfumes] = await Promise.all([
-      Balloon.find({ isSale: true }),
-      Gift.find({ isSale: true }),
-      Perfume.find({ isSale: true }),
-    ]);
-    // 2. تجميع كل المنتجات في مصفوفة واحدة
+  // 2. حذف المنتج من جميع السلات التي تحتويه
+  await Cart.updateMany(
+    { 'items.product': id },
+    { $pull: { items: { product: id } } }
+  );
 
-    const SaleProducts = [...balloons, ...gifts, ...perfumes];
-    // إرجاع المنتجات كـ JSON للـ Frontend
-    res.status(200).json(SaleProducts);
-  } catch (error) {
-    res
-      .status(500)
-      .json({ message: "حدث خطأ أثناء جلب التخفضيات", error: error.message });
-  }
-};
-
-// 6. Delete - حذف منتج
-exports.deleteProduct = async (req, res, next) => {
-  try {
-    const Model = getModel(req.params.type);
-    if (!Model)
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid product type" });
-
-    const product = await Model.findByIdAndDelete(req.params.id);
-    if (!product)
-      return res
-        .status(404)
-        .json({ success: false, message: "Product not found" });
-
-    res
-      .status(200)
-      .json({ success: true, message: "Product deleted successfully" });
-  } catch (error) {
-    next(error);
+  return res.status(200).json({
+    success: true,
+    message: "The product was deleted successfully",
+    deletedProductId: id,
+  });
+} catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: "An error occurred while deleting the product",
+      error: error.message,
+    });
   }
 };
 
@@ -248,42 +249,32 @@ exports.deleteImage = async (req, res, next) => {
   }
 };
 
-exports.getProductCount = async (req, res, next) => {
+exports.getCategoriesCount = async (req, res, next) => {
   try {
-    // 1. تنفيذ الاستعلامات الثلاثة بالتوازي لتوفير الوقت والسرعة
-    const [balloons, gifts, perfumes] = await Promise.all([
-      Balloon.find(),
-      Gift.find(),
-      Perfume.find(),
-    ]);
-    const [balloonsSale, giftsSale, perfumesSale] = await Promise.all([
-      Balloon.find({ isSale: true }),
-      Gift.find({ isSale: true }),
-      Perfume.find({ isSale: true }),
+    const categoriesCount = await Product.aggregate([
+      {
+        $group: {
+          _id: "$category",
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          category: "$_id",
+          count: 1,
+        },
+      },
+      {
+        $sort: { category: 1 },
+      },
     ]);
 
-    // 2. تجميع كل المنتجات في مصفوفة واحدة
-    const productsCount = [
-      {
-        name: "all",
-        count: perfumes.length + balloons.length + gifts.length || 0,
-      },
-      { name: "perfumes", count: perfumes.length || 0 },
-      { name: "balloons", count: balloons.length || 0 },
-      { name: "gifts", count: gifts.length || 0 },
-      {
-        name: "sale",
-        count: balloonsSale.length + giftsSale.length + giftsSale.length || 0,
-      },
-    ];
-
-    // 3. إرجاع الرد للـ Frontend
     res.status(200).json({
       success: true,
-      categoryCount: productsCount,
+      data: [...categoriesCount],
     });
   } catch (error) {
-    // تمرير الخطأ للـ Error Middleware
     next(error);
   }
 };

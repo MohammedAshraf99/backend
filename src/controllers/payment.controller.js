@@ -1,8 +1,9 @@
-const paypal = require("@paypal/checkout-server-sdk");
-const { client } = require("../config/paypal");
 const Order = require("../models/order.model"); // 💡 استيراد الموديل الجديد
+const { client, paypal } = require("../config/paypall");
+// const { paypa } = require("../config/paypal");
 
-// 1. إنشاء طلب الدفع
+// 1. Create payment order
+
 exports.createPaypalOrder = async (req, res, next) => {
   try {
     const { amount } = req.body;
@@ -14,8 +15,8 @@ exports.createPaypalOrder = async (req, res, next) => {
       purchase_units: [
         {
           amount: {
-            currency_code: "USD",
-            value: amount.toString(),
+            currency_code: "GBP",
+            value:amount,
           },
         },
       ],
@@ -28,7 +29,7 @@ exports.createPaypalOrder = async (req, res, next) => {
   }
 };
 
-// 2. تأكيد الدفع وحفظ العملية في قاعدة البيانات
+// 2. Confirm payment and save transaction to database
 exports.capturePaypalOrder = async (req, res, next) => {
   try {
     const { orderID, items } = req.body;
@@ -37,12 +38,13 @@ exports.capturePaypalOrder = async (req, res, next) => {
     request.requestBody({});
 
     const capture = await client().execute(request);
+    console.log(capture.result.status === "COMPLETED");
 
     if (capture.result.status === "COMPLETED") {
       const payer = capture.result.payer;
       const purchaseUnit = capture.result.purchase_units[0];
 
-      // 💡 حفظ العملية في قاعدة البيانات عبر الموديل
+      // 💡 Save transaction to database via model
       const savedOrder = await Order.create({
         orderID: capture.result.id,
         amount: Number(purchaseUnit.payments.captures[0].amount.value),
@@ -53,26 +55,26 @@ exports.capturePaypalOrder = async (req, res, next) => {
           payerId: payer.payer_id,
         },
         status: capture.result.status,
-        items: items || [], // قائمة المنتجات المشتراة
+        items: items || [], // List of purchased products
       });
 
       res.status(200).json({
         success: true,
-        message: "تمت عملية الدفع وحفظ الطلب بنجاح",
+        message: "Payment processed and order saved successfully",
         order: savedOrder,
       });
     } else {
-      res.status(400).json({ success: false, message: "فشلت عملية الدفع" });
+      res.status(400).json({ success: false, message: "Payment failed" });
     }
   } catch (error) {
     next(error);
   }
 };
 
-// 3. دالة لجلب جميع الطلبات للوحة التحكم (البيانات التي سيتم عرضها)
+// 3. Function to fetch all orders for the dashboard (data to be displayed)
 exports.getAllOrders = async (req, res, next) => {
   try {
-    const orders = await Order.find().sort({ createdAt: -1 }); // ترتيب من الأحدث للأقدم
+    const orders = await Order.find().sort({ createdAt: -1 }); // Sort from newest to oldest
     res.status(200).json({ success: true, data: orders });
   } catch (error) {
     next(error);
