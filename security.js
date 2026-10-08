@@ -17,10 +17,10 @@ const applySecurity = (app) => {
 
   // 2. إعدادات CO  RS المتكاملة
   const allowedOrigins = [
-    "https://k11-tan.vercel.app",
-    "http://localhost:4200",
     process.env.CLIENT_URL,
-  ].filter(Boolean); // إزالة القيم الفارغة إن لم تتوافر البيئة
+ 'https://www.k11perfumes.co.uk',
+ 
+].filter(Boolean); // إزالة القيم الفارغة إن لم تتوافر البيئة
 
   const corsOptions = {
     origin: (origin, callback) => {
